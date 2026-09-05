@@ -6,22 +6,25 @@
     <title>Deutsch FSRS</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Importado via CDN para rodar nativo no navegador) -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
       import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
       import { fsrs, createEmptyCard } from "https://cdn.jsdelivr.net/npm/ts-fsrs@3.5.0/dist/index.browser.js"; // FSRS Browser Build
 
-window.FirebaseConfig = {
+      // Suas credenciais recém-geradas
+      window.FirebaseConfig = {
           apiKey: "AIzaSyDEJ3GFS4PVlpF8xC5o97woXNrgx7kU5E8",
           authDomain: "deutsch-5aa70.firebaseapp.com",
           projectId: "deutsch-5aa70",
           storageBucket: "deutsch-5aa70.firebasestorage.app",
           messagingSenderId: "267983749052",
-          appId: "1:267983749052:web:19ae97d97fcf97569575b9"
+          appId: "1:267983749052:web:19ae97d97fcf97569575b9",
+          measurementId: "G-V6FCDYLFPT"
       };
       
+      // Expondo os módulos globalmente para o app.js conseguir usar
       window.FB_MODS = { initializeApp, getAuth, signInWithEmailAndPassword, onAuthStateChanged, getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy };
       window.FSRS = { fsrs, createEmptyCard };
     </script>
@@ -81,6 +84,7 @@ window.FirebaseConfig = {
             <button class="btn btn-special" onclick="playPhrase()">🔊 Ouvir Frase Completa</button>
             
             <div class="study-inputs">
+                <!-- Inputs configurados para não corrigir ou sugerir palavras no celular -->
                 <input type="text" id="study-input" placeholder="Digite a frase..." autocorrect="off" autocapitalize="off" spellcheck="false">
                 <button class="btn btn-primary" id="btn-check" onclick="checkText()">Conferir</button>
             </div>
