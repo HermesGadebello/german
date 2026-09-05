@@ -1,11 +1,9 @@
-let app, auth, db;
 const sounds = {
     click: new Audio('click.mp3'),
     ok: new Audio('ok.mp3'),
     falha: new Audio('falha.mp3')
 };
 
-// Configurações e Estado Global
 let currentStudyDeck = [];
 let currentCardIndex = 0;
 let currentCard = null;
@@ -13,37 +11,10 @@ let textErrors = 0;
 let bestSpeechErrors = Infinity;
 let speechTries = 0;
 
-// Inicializa quando o Firebase carrega
-window.onload = () => {
-    app = window.FB_MODS.initializeApp(window.FirebaseConfig);
-    auth = window.FB_MODS.getAuth(app);
-    db = window.FB_MODS.getFirestore(app);
-
-    window.FB_MODS.onAuthStateChanged(auth, user => {
-        if (user) {
-            showScreen('menu-screen');
-        } else {
-            showScreen('login-screen');
-        }
-    });
-};
-
-// Utilitários de UI
 window.showScreen = (id) => {
     sounds.click.play();
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-};
-
-// Autenticação
-window.login = async () => {
-    const email = document.getElementById('email').value;
-    const senha = document.getElementById('senha').value;
-    try {
-        await window.FB_MODS.signInWithEmailAndPassword(auth, email, senha);
-    } catch (e) {
-        alert("Erro no login: " + e.message);
-    }
 };
 
 // Salvar Baralho
@@ -53,8 +24,13 @@ window.saveDeck = async () => {
     const vocabRaw = document.getElementById('deck-vocab').value;
     const phrase = document.getElementById('deck-phrase').value;
 
+    if (!month || !name || !vocabRaw || !phrase) {
+        alert("Preencha todos os campos!");
+        return;
+    }
+
     const vocabArray = vocabRaw.split('.').map(s => s.trim()).filter(Boolean);
-    const fsrsCard = window.FSRS.createEmptyCard(); // Cria base FSRS js-fsrs
+    const fsrsCard = window.FSRS_Lib.createEmptyCard();
 
     const docData = {
         mesAno: month,
@@ -65,7 +41,7 @@ window.saveDeck = async () => {
         fsrs: fsrsCard
     };
 
-    await window.FB_MODS.addDoc(window.FB_MODS.collection(db, "baralhos"), docData);
+    await window.salvarBaralhoDB(docData);
     sounds.ok.play();
     alert("Salvo com sucesso!");
     showScreen('menu-screen');
@@ -73,9 +49,7 @@ window.saveDeck = async () => {
 
 // Carregar Baralhos
 window.loadDecks = async () => {
-    const q = window.FB_MODS.query(window.FB_MODS.collection(db, "baralhos"), window.FB_MODS.orderBy("mesAno", "desc"));
-    const snapshot = await window.FB_MODS.getDocs(q);
-    
+    const snapshot = await window.carregarBaralhosDB();
     const list = document.getElementById('decks-list');
     list.innerHTML = "";
     
@@ -87,7 +61,6 @@ window.loadDecks = async () => {
             list.innerHTML += `<div class="month-title">${formatMonth(currentMonth)}</div>`;
         }
         
-        // Verifica se tá na hora de revisar baseado no FSRS
         let isDue = new Date(data.fsrs.due) <= new Date();
         let badge = isDue ? '🔴 Revisar' : '✅ Em dia';
 
@@ -101,10 +74,7 @@ const formatMonth = (yyyy_mm) => {
     return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
 };
 
-// ==========================================
-// LÓGICA DE ESTUDO
-// ==========================================
-
+// Lógica de Estudo
 window.startStudy = (id, dataStr) => {
     currentCard = JSON.parse(unescape(dataStr));
     currentCard.id = id;
@@ -130,7 +100,6 @@ const renderVocab = () => {
     });
 };
 
-// Text-to-Speech
 window.playAudio = (text) => {
     const ut = new SpeechSynthesisUtterance(text);
     ut.lang = 'de-DE';
@@ -139,7 +108,6 @@ window.playAudio = (text) => {
 
 window.playPhrase = () => playAudio(currentCard.frase);
 
-// Distância de Levenshtein para Correção
 const levenshtein = (a, b) => {
     const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
     for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
@@ -171,7 +139,6 @@ window.checkText = () => {
     document.getElementById('speech-tries').innerText = speechTries;
 };
 
-// Reconhecimento de Fala
 window.startSpeech = () => {
     if (speechTries >= 3) return;
     
@@ -204,26 +171,19 @@ window.startSpeech = () => {
     };
 };
 
-// Integração FSRS e Avanço
 window.nextCard = async () => {
-    if (bestSpeechErrors === Infinity) bestSpeechErrors = 5; // Penaliza se pulou o mic
+    if (bestSpeechErrors === Infinity) bestSpeechErrors = 5;
     
-    // Calcula Rating FSRS baseado nos erros (1=Again, 2=Hard, 3=Good, 4=Easy)
-    let rating = 1; // Again
-    if (textErrors === 0 && bestSpeechErrors === 0) rating = 4; // Easy
-    else if (textErrors <= 2 && bestSpeechErrors <= 2) rating = 3; // Good
-    else if (textErrors <= 5 && bestSpeechErrors <= 5) rating = 2; // Hard
+    let rating = 1; 
+    if (textErrors === 0 && bestSpeechErrors === 0) rating = 4; 
+    else if (textErrors <= 2 && bestSpeechErrors <= 2) rating = 3; 
+    else if (textErrors <= 5 && bestSpeechErrors <= 5) rating = 2; 
 
-    // Instancia FSRS e calcula nova data e estado
-    const f = new window.FSRS.fsrs();
+    const f = new window.FSRS_Lib.fsrs();
     const schedulingCards = f.repeat(currentCard.fsrs, new Date());
     const nextFSRSRecord = schedulingCards[rating].card;
 
-    // Atualiza Firestore
-    const ref = window.FB_MODS.doc(db, "baralhos", currentCard.id);
-    await window.FB_MODS.updateDoc(ref, {
-        fsrs: nextFSRSRecord
-    });
+    await window.atualizarCardDB(currentCard.id, nextFSRSRecord);
 
     showScreen('decks-screen');
     loadDecks();
