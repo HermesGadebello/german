@@ -17,7 +17,6 @@ window.showScreen = (id) => {
     document.getElementById(id).classList.add('active');
 };
 
-// Função 100% segura que remove todos os campos 'undefined' incompatíveis com o Firestore
 const sanitizeForFirestore = (obj) => {
     return JSON.parse(JSON.stringify(obj));
 };
@@ -36,8 +35,6 @@ window.saveDeck = async () => {
 
     const vocabArray = vocabRaw.split('.').map(s => s.trim()).filter(Boolean);
     const fsrsCard = window.FSRS_Lib.createEmptyCard();
-
-    // Limpa o objeto FSRS removendo qualquer 'undefined'
     const safeFsrsCard = sanitizeForFirestore(fsrsCard);
 
     const docData = {
@@ -64,8 +61,10 @@ window.loadDecks = async () => {
     let currentMonth = "";
     snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        if (data.mesAno !== currentMonth) {
-            currentMonth = data.mesAno;
+        const mesAno = data.mesAno || "sem-data";
+        
+        if (mesAno !== currentMonth) {
+            currentMonth = mesAno;
             list.innerHTML += `<div class="month-title">${formatMonth(currentMonth)}</div>`;
         }
         
@@ -76,8 +75,9 @@ window.loadDecks = async () => {
     });
 };
 
-const formatMonth = (yyyy_mm) => {
-    const [y, m] = yyy_mm.split('-');
+const formatMonth = (mesAno) => {
+    if (!mesAno || !mesAno.includes('-')) return "OUTROS";
+    const [y, m] = mesAno.split('-');
     const date = new Date(y, m - 1);
     return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
 };
@@ -189,7 +189,6 @@ window.nextCard = async () => {
 
     const f = new window.FSRS_Lib.fsrs();
     
-    // Reconstrói as datas do card para o formato Date exigido pelo FSRS
     currentCard.fsrs.due = new Date(currentCard.fsrs.due);
     if (currentCard.fsrs.last_review) currentCard.fsrs.last_review = new Date(currentCard.fsrs.last_review);
 
