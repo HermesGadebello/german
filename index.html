@@ -13,7 +13,6 @@
       import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
       import { fsrs, createEmptyCard } from "https://cdn.jsdelivr.net/npm/ts-fsrs@3.5.0/dist/index.browser.js";
 
-      // Suas credenciais
       const firebaseConfig = {
           apiKey: "AIzaSyDEJ3GFS4PVlpF8xC5o97woXNrgx7kU5E8",
           authDomain: "deutsch-5aa70.firebaseapp.com",
@@ -28,7 +27,6 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
 
-      // Monitor de Autenticação Automático
       onAuthStateChanged(auth, user => {
           if (user) {
               if (window.showScreen) window.showScreen('menu-screen');
@@ -37,10 +35,16 @@
           }
       });
 
-      // Funções globais chamadas pelos botões do HTML
-      window.realizarLogin = async () => {
+      // Definindo e expondo explicitamente para o escopo global (window)
+      window.realizarLogin = async function() {
           const email = document.getElementById('email').value;
           const senha = document.getElementById('senha').value;
+          
+          if (!email || !senha) {
+              alert("Preencha e-mail e senha!");
+              return;
+          }
+
           try {
               await signInWithEmailAndPassword(auth, email, senha);
           } catch (e) {
@@ -85,7 +89,7 @@
         <h1>Willkommen</h1>
         <input type="email" id="email" placeholder="E-mail">
         <input type="password" id="senha" placeholder="Senha">
-        <button class="btn btn-primary" onclick="realizarLogin()">Entrar</button>
+        <button class="btn btn-primary" onclick="window.realizarLogin()">Entrar</button>
     </div>
 
     <!-- Menu Principal -->
