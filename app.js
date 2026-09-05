@@ -1,0 +1,230 @@
+let app, auth, db;
+const sounds = {
+    click: new Audio('click.mp3'),
+    ok: new Audio('ok.mp3'),
+    falha: new Audio('falha.mp3')
+};
+
+// Configurações e Estado Global
+let currentStudyDeck = [];
+let currentCardIndex = 0;
+let currentCard = null;
+let textErrors = 0;
+let bestSpeechErrors = Infinity;
+let speechTries = 0;
+
+// Inicializa quando o Firebase carrega
+window.onload = () => {
+    app = window.FB_MODS.initializeApp(window.FirebaseConfig);
+    auth = window.FB_MODS.getAuth(app);
+    db = window.FB_MODS.getFirestore(app);
+
+    window.FB_MODS.onAuthStateChanged(auth, user => {
+        if (user) {
+            showScreen('menu-screen');
+        } else {
+            showScreen('login-screen');
+        }
+    });
+};
+
+// Utilitários de UI
+window.showScreen = (id) => {
+    sounds.click.play();
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+};
+
+// Autenticação
+window.login = async () => {
+    const email = document.getElementById('email').value;
+    const senha = document.getElementById('senha').value;
+    try {
+        await window.FB_MODS.signInWithEmailAndPassword(auth, email, senha);
+    } catch (e) {
+        alert("Erro no login: " + e.message);
+    }
+};
+
+// Salvar Baralho
+window.saveDeck = async () => {
+    const month = document.getElementById('deck-month').value;
+    const name = document.getElementById('deck-name').value;
+    const vocabRaw = document.getElementById('deck-vocab').value;
+    const phrase = document.getElementById('deck-phrase').value;
+
+    const vocabArray = vocabRaw.split('.').map(s => s.trim()).filter(Boolean);
+    const fsrsCard = window.FSRS.createEmptyCard(); // Cria base FSRS js-fsrs
+
+    const docData = {
+        mesAno: month,
+        nome: name,
+        vocabulario: vocabArray,
+        frase: phrase,
+        criadoEm: new Date(),
+        fsrs: fsrsCard
+    };
+
+    await window.FB_MODS.addDoc(window.FB_MODS.collection(db, "baralhos"), docData);
+    sounds.ok.play();
+    alert("Salvo com sucesso!");
+    showScreen('menu-screen');
+};
+
+// Carregar Baralhos
+window.loadDecks = async () => {
+    const q = window.FB_MODS.query(window.FB_MODS.collection(db, "baralhos"), window.FB_MODS.orderBy("mesAno", "desc"));
+    const snapshot = await window.FB_MODS.getDocs(q);
+    
+    const list = document.getElementById('decks-list');
+    list.innerHTML = "";
+    
+    let currentMonth = "";
+    snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.mesAno !== currentMonth) {
+            currentMonth = data.mesAno;
+            list.innerHTML += `<div class="month-title">${formatMonth(currentMonth)}</div>`;
+        }
+        
+        // Verifica se tá na hora de revisar baseado no FSRS
+        let isDue = new Date(data.fsrs.due) <= new Date();
+        let badge = isDue ? '🔴 Revisar' : '✅ Em dia';
+
+        list.innerHTML += `<div class="deck-item" onclick="startStudy('${docSnap.id}', '${escape(JSON.stringify(data))}')">${data.nome} - ${badge}</div>`;
+    });
+};
+
+const formatMonth = (yyyy_mm) => {
+    const [y, m] = yyy_mm.split('-');
+    const date = new Date(y, m - 1);
+    return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
+};
+
+// ==========================================
+// LÓGICA DE ESTUDO
+// ==========================================
+
+window.startStudy = (id, dataStr) => {
+    currentCard = JSON.parse(unescape(dataStr));
+    currentCard.id = id;
+    textErrors = 0;
+    bestSpeechErrors = Infinity;
+    speechTries = 0;
+    
+    document.getElementById('study-input').value = "";
+    document.getElementById('study-input').disabled = false;
+    document.getElementById('btn-check').style.display = 'block';
+    document.getElementById('speech-section').style.display = 'none';
+    document.getElementById('btn-next').style.display = 'none';
+    
+    renderVocab();
+    showScreen('study-screen');
+};
+
+const renderVocab = () => {
+    const cont = document.getElementById('vocab-buttons');
+    cont.innerHTML = "";
+    currentCard.vocabulario.forEach(word => {
+        cont.innerHTML += `<button class="vocab-btn" onclick="playAudio('${word}')">${word}</button>`;
+    });
+};
+
+// Text-to-Speech
+window.playAudio = (text) => {
+    const ut = new SpeechSynthesisUtterance(text);
+    ut.lang = 'de-DE';
+    window.speechSynthesis.speak(ut);
+};
+
+window.playPhrase = () => playAudio(currentCard.frase);
+
+// Distância de Levenshtein para Correção
+const levenshtein = (a, b) => {
+    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+        }
+    }
+    return matrix[a.length][b.length];
+};
+
+const normalize = (str) => str.toLowerCase().replace(/[^\w\säöüß]/gi, '').trim();
+
+window.checkText = () => {
+    const input = document.getElementById('study-input').value;
+    const expected = normalize(currentCard.frase);
+    const typed = normalize(input);
+    
+    textErrors = levenshtein(expected, typed);
+    
+    if (textErrors === 0) sounds.ok.play();
+    else sounds.falha.play();
+
+    document.getElementById('study-input').disabled = true;
+    document.getElementById('btn-check').style.display = 'none';
+    document.getElementById('speech-section').style.display = 'block';
+    document.getElementById('speech-tries').innerText = speechTries;
+};
+
+// Reconhecimento de Fala
+window.startSpeech = () => {
+    if (speechTries >= 3) return;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Reconhecimento de fala não suportado neste navegador.");
+        document.getElementById('btn-next').style.display = 'block';
+        return;
+    }
+
+    const reco = new SpeechRecognition();
+    reco.lang = 'de-DE';
+    reco.start();
+
+    reco.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const errs = levenshtein(normalize(currentCard.frase), normalize(transcript));
+        
+        if (errs < bestSpeechErrors) bestSpeechErrors = errs;
+        speechTries++;
+        
+        document.getElementById('speech-result').innerText = `Entendido: "${transcript}" (Erros: ${errs})`;
+        document.getElementById('speech-tries').innerText = speechTries;
+
+        if (errs === 0 || speechTries >= 3) {
+            document.getElementById('btn-speak').style.display = 'none';
+            document.getElementById('btn-next').style.display = 'block';
+            if(errs === 0) sounds.ok.play();
+        }
+    };
+};
+
+// Integração FSRS e Avanço
+window.nextCard = async () => {
+    if (bestSpeechErrors === Infinity) bestSpeechErrors = 5; // Penaliza se pulou o mic
+    
+    // Calcula Rating FSRS baseado nos erros (1=Again, 2=Hard, 3=Good, 4=Easy)
+    let rating = 1; // Again
+    if (textErrors === 0 && bestSpeechErrors === 0) rating = 4; // Easy
+    else if (textErrors <= 2 && bestSpeechErrors <= 2) rating = 3; // Good
+    else if (textErrors <= 5 && bestSpeechErrors <= 5) rating = 2; // Hard
+
+    // Instancia FSRS e calcula nova data e estado
+    const f = new window.FSRS.fsrs();
+    const schedulingCards = f.repeat(currentCard.fsrs, new Date());
+    const nextFSRSRecord = schedulingCards[rating].card;
+
+    // Atualiza Firestore
+    const ref = window.FB_MODS.doc(db, "baralhos", currentCard.id);
+    await window.FB_MODS.updateDoc(ref, {
+        fsrs: nextFSRSRecord
+    });
+
+    showScreen('decks-screen');
+    loadDecks();
+};
