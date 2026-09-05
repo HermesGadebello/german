@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deutsch FSRS</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+      import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+      import { fsrs, createEmptyCard } from "https://cdn.jsdelivr.net/npm/ts-fsrs@3.5.0/dist/index.browser.js"; // FSRS Browser Build
+
+      window.FirebaseConfig = {
+          // COLE AQUI SUAS CREDENCIAIS DO FIREBASE
+          apiKey: "SUA_API_KEY",
+          authDomain: "SEU_PROJETO.firebaseapp.com",
+          projectId: "SEU_PROJETO"
+      };
+      
+      window.FB_MODS = { initializeApp, getAuth, signInWithEmailAndPassword, onAuthStateChanged, getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy };
+      window.FSRS = { fsrs, createEmptyCard };
+    </script>
+</head>
+<body>
+
+    <!-- Ilustração Topo (Portão de Brandemburgo Simplificado) -->
+    <div class="brandenburg-gate">
+        <svg viewBox="0 0 100 50" width="120" fill="var(--teal)">
+            <rect x="10" y="40" width="80" height="10" />
+            <rect x="15" y="10" width="10" height="30" />
+            <rect x="30" y="10" width="10" height="30" />
+            <rect x="45" y="10" width="10" height="30" />
+            <rect x="60" y="10" width="10" height="30" />
+            <rect x="75" y="10" width="10" height="30" />
+            <polygon points="10,10 90,10 80,0 20,0" />
+        </svg>
+    </div>
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="screen active">
+        <h1>Willkommen</h1>
+        <input type="email" id="email" placeholder="E-mail">
+        <input type="password" id="senha" placeholder="Senha">
+        <button class="btn btn-primary" onclick="login()">Entrar</button>
+    </div>
+
+    <!-- Menu Principal -->
+    <div id="menu-screen" class="screen">
+        <button class="btn btn-primary" onclick="showScreen('decks-screen'); loadDecks()">Meus Cards</button>
+        <button class="btn btn-secondary" onclick="showScreen('add-screen')">Adicionar Cards</button>
+    </div>
+
+    <!-- Adicionar Baralho -->
+    <div id="add-screen" class="screen">
+        <h2>Novo Baralho</h2>
+        <input type="month" id="deck-month">
+        <input type="text" id="deck-name" placeholder="Nome do baralho">
+        <textarea id="deck-vocab" placeholder="Ex: Er. Mann. Frau."></textarea>
+        <input type="text" id="deck-phrase" placeholder="Frase completa em alemão">
+        
+        <button class="btn btn-primary" onclick="saveDeck()">Salvar</button>
+        <button class="btn btn-secondary" onclick="showScreen('menu-screen')">Voltar</button>
+    </div>
+
+    <!-- Lista de Baralhos -->
+    <div id="decks-screen" class="screen">
+        <h2>Meus Cards</h2>
+        <div id="decks-list"></div>
+        <button class="btn btn-secondary" onclick="showScreen('menu-screen')">Voltar</button>
+    </div>
+
+    <!-- Tela de Estudo -->
+    <div id="study-screen" class="screen">
+        <div class="card-container" id="study-card">
+            <div id="vocab-buttons" class="vocab-container"></div>
+            <button class="btn btn-special" onclick="playPhrase()">🔊 Ouvir Frase Completa</button>
+            
+            <div class="study-inputs">
+                <input type="text" id="study-input" placeholder="Digite a frase..." autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button class="btn btn-primary" id="btn-check" onclick="checkText()">Conferir</button>
+            </div>
+
+            <div id="speech-section" style="display: none;">
+                <p>Tentativas de fala: <span id="speech-tries">0</span>/3</p>
+                <button class="btn btn-primary" id="btn-speak" onclick="startSpeech()">🎤 Falar</button>
+                <p id="speech-result"></p>
+                <button class="btn btn-secondary" id="btn-next" onclick="nextCard()" style="display:none;">Avançar ➔</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>
