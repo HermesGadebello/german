@@ -1,0 +1,107 @@
+:root {
+    --teal: #4DB2AB;
+    --teal-dark: #3A8E88;
+    --green: #538E44;
+    --green-dark: #3F6C33;
+    --cream: #F0EBC4;
+    --yellow: #E8C138;
+    --yellow-dark: #B59527;
+    --dusty-rose: #DEBDBB;
+    --bg-color: #FAFAFA;
+    --text-color: #333333;
+}
+
+@font-face { font-family: 'Nunito'; src: url('Nunito-Regular.ttf'); }
+@font-face { font-family: 'Feather'; src: url('Feather Bold.ttf'); }
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+h1, h2 { font-family: 'Feather', sans-serif; }
+
+.brandenburg-gate { margin-bottom: 20px; text-align: center; }
+
+.screen { display: none; width: 100%; max-width: 400px; flex-direction: column; gap: 15px; }
+.screen.active { display: flex; }
+
+/* Duolingo Style Buttons */
+.btn {
+    font-family: 'Feather', sans-serif;
+    font-size: 16px;
+    padding: 15px;
+    border: none;
+    border-radius: 16px;
+    color: white;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.1s;
+    outline: none;
+}
+
+.btn-primary {
+    background-color: var(--teal);
+    border-bottom: 4px solid var(--teal-dark);
+}
+
+.btn-primary:active {
+    transform: translateY(4px);
+    border-bottom-width: 0;
+    margin-bottom: 4px;
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--teal);
+    border: 2px solid var(--teal);
+    border-bottom: 4px solid var(--teal);
+}
+
+.btn-secondary:active {
+    transform: translateY(4px);
+    border-bottom-width: 2px;
+    margin-bottom: 4px;
+}
+
+.btn-special {
+    background-color: var(--yellow);
+    border-bottom: 4px solid var(--yellow-dark);
+    color: #333;
+}
+
+/* Inputs and Cards */
+input, textarea {
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    padding: 15px;
+    border: 2px solid #E5E5E5;
+    border-radius: 12px;
+    background-color: white;
+}
+
+input:focus, textarea:focus { border-color: var(--teal); outline: none; }
+
+.card-container {
+    background: white;
+    padding: 20px;
+    border-radius: 20px;
+    border: 2px solid #E5E5E5;
+    box-shadow: 0 4px 0 #E5E5E5;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.vocab-container { display: flex; flex-wrap: wrap; gap: 10px; }
+.vocab-btn { background-color: var(--cream); border: 2px solid #D6D0A9; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+
+.month-group { margin-top: 20px; }
+.month-title { font-family: 'Feather', sans-serif; color: var(--dusty-rose); font-size: 14px; letter-spacing: 1px; }
+.deck-item { background: white; padding: 15px; border-radius: 12px; border: 2px solid #E5E5E5; margin-top: 10px; cursor: pointer; font-weight: bold;}
