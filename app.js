@@ -17,18 +17,9 @@ window.showScreen = (id) => {
     document.getElementById(id).classList.add('active');
 };
 
-// Função para limpar valores 'undefined' antes de enviar ao Firestore (preservando datas)
+// Função 100% segura que remove todos os campos 'undefined' incompatíveis com o Firestore
 const sanitizeForFirestore = (obj) => {
-    if (obj === null || typeof obj !== 'object') return obj;
-    if (obj instanceof Date) return obj;
-    
-    const cleaned = Array.isArray(obj) ? [] : {};
-    for (let key of Object.keys(obj)) {
-        if (obj[key] !== undefined) {
-            cleaned[key] = sanitizeForFirestore(obj[key]);
-        }
-    }
-    return cleaned;
+    return JSON.parse(JSON.stringify(obj));
 };
 
 // Salvar Baralho
@@ -46,7 +37,7 @@ window.saveDeck = async () => {
     const vocabArray = vocabRaw.split('.').map(s => s.trim()).filter(Boolean);
     const fsrsCard = window.FSRS_Lib.createEmptyCard();
 
-    // Limpa o objeto FSRS para remover campos 'undefined' incompatíveis com o Firestore
+    // Limpa o objeto FSRS removendo qualquer 'undefined'
     const safeFsrsCard = sanitizeForFirestore(fsrsCard);
 
     const docData = {
@@ -198,7 +189,7 @@ window.nextCard = async () => {
 
     const f = new window.FSRS_Lib.fsrs();
     
-    // Reconstrói as datas do card atual caso tenham vindo como string do JSON
+    // Reconstrói as datas do card para o formato Date exigido pelo FSRS
     currentCard.fsrs.due = new Date(currentCard.fsrs.due);
     if (currentCard.fsrs.last_review) currentCard.fsrs.last_review = new Date(currentCard.fsrs.last_review);
 
