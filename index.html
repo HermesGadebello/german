@@ -6,15 +6,15 @@
     <title>Deutsch FSRS</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- Firebase SDK (Importado via CDN para rodar nativo no navegador) -->
+    <!-- Firebase SDK e Funções Globais -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
       import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
       import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-      import { fsrs, createEmptyCard } from "https://cdn.jsdelivr.net/npm/ts-fsrs@3.5.0/dist/index.browser.js"; // FSRS Browser Build
+      import { fsrs, createEmptyCard } from "https://cdn.jsdelivr.net/npm/ts-fsrs@3.5.0/dist/index.browser.js";
 
-      // Suas credenciais recém-geradas
-      window.FirebaseConfig = {
+      // Suas credenciais
+      const firebaseConfig = {
           apiKey: "AIzaSyDEJ3GFS4PVlpF8xC5o97woXNrgx7kU5E8",
           authDomain: "deutsch-5aa70.firebaseapp.com",
           projectId: "deutsch-5aa70",
@@ -24,9 +24,45 @@
           measurementId: "G-V6FCDYLFPT"
       };
       
-      // Expondo os módulos globalmente para o app.js conseguir usar
-      window.FB_MODS = { initializeApp, getAuth, signInWithEmailAndPassword, onAuthStateChanged, getFirestore, collection, addDoc, getDocs, doc, updateDoc, query, orderBy };
-      window.FSRS = { fsrs, createEmptyCard };
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      // Monitor de Autenticação Automático
+      onAuthStateChanged(auth, user => {
+          if (user) {
+              if (window.showScreen) window.showScreen('menu-screen');
+          } else {
+              if (window.showScreen) window.showScreen('login-screen');
+          }
+      });
+
+      // Funções globais chamadas pelos botões do HTML
+      window.realizarLogin = async () => {
+          const email = document.getElementById('email').value;
+          const senha = document.getElementById('senha').value;
+          try {
+              await signInWithEmailAndPassword(auth, email, senha);
+          } catch (e) {
+              alert("Erro no login: " + e.message);
+          }
+      };
+
+      window.salvarBaralhoDB = async (deckData) => {
+          return await addDoc(collection(db, "baralhos"), deckData);
+      };
+
+      window.carregarBaralhosDB = async () => {
+          const q = query(collection(db, "baralhos"), orderBy("mesAno", "desc"));
+          return await getDocs(q);
+      };
+
+      window.atualizarCardDB = async (id, fsrsData) => {
+          const ref = doc(db, "baralhos", id);
+          return await updateDoc(ref, { fsrs: fsrsData });
+      };
+
+      window.FSRS_Lib = { fsrs, createEmptyCard };
     </script>
 </head>
 <body>
@@ -49,7 +85,7 @@
         <h1>Willkommen</h1>
         <input type="email" id="email" placeholder="E-mail">
         <input type="password" id="senha" placeholder="Senha">
-        <button class="btn btn-primary" onclick="login()">Entrar</button>
+        <button class="btn btn-primary" onclick="realizarLogin()">Entrar</button>
     </div>
 
     <!-- Menu Principal -->
@@ -84,7 +120,6 @@
             <button class="btn btn-special" onclick="playPhrase()">🔊 Ouvir Frase Completa</button>
             
             <div class="study-inputs">
-                <!-- Inputs configurados para não corrigir ou sugerir palavras no celular -->
                 <input type="text" id="study-input" placeholder="Digite a frase..." autocorrect="off" autocapitalize="off" spellcheck="false">
                 <button class="btn btn-primary" id="btn-check" onclick="checkText()">Conferir</button>
             </div>
@@ -98,6 +133,6 @@
         </div>
     </div>
 
-    <script src="app.js" type="module"></script>
+    <script src="app.js"></script>
 </body>
 </html>
